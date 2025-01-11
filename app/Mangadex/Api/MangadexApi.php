@@ -25,8 +25,13 @@ class MangadexApi
     protected function buildURL () : void
     {
         $this->client = new Client([
-            'base_uri' => self::HTTP_PROTOCOLS . '://' . self::API_DOMAIN
+            'base_uri' => self::HTTP_PROTOCOLS . '://' . self::API_DOMAIN,
+            'timeout'  => 60
         ]);
+    }
+    protected function getHostUrl () : string
+    {
+        return self::HTTP_PROTOCOLS . '://' . self::API_DOMAIN;
     }
 
     /**
@@ -60,7 +65,6 @@ class MangadexApi
      */
     protected function handleResponse ($response) : object
     {
-        sleep(2);
         if ($response->getStatusCode() === 200) {
             return json_decode($response->getBody());
         } else {
