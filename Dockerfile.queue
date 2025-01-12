@@ -1,4 +1,0 @@
-FROM serversideup/php:8.2-cli
-LABEL authors="valerie"
-
-WORKDIR /var/www/pizzareader

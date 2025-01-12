@@ -1,0 +1,13 @@
+version: '3.4'
+
+services:
+  backend:
+    build:
+      context: ./..
+      dockerfile: prod/Dockerfile
+    ports:
+     - "8880:80"
+     - "8888:8080"
+    volumes:
+      - ./..:/var/www/html
+      - .env:/var/www/html/.env

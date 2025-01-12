@@ -196,6 +196,7 @@ class SyncWithMangadex extends Command
             );
             $chapter->save();
         } catch (\Exception $exception){
+            throw $exception;
             echo $exception->getMessage(); die;
             $chapter->delete();
         }
