@@ -2,7 +2,7 @@
 
 namespace App\Mangadex\Api;
 
-use GuzzleHttp\Client;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 
 class Manga extends MangadexApi
@@ -66,22 +66,19 @@ class Manga extends MangadexApi
 
         return $this->handleResponse($response);
     }
-    public function getMangaChapters(string $mangaId, int $limit = 10, int $offset = 0) : object
+    public function getMangaChapters(string $mangaId, int $limit = 10, int $offset = 0) : Response
     {
-        return $this->handleResponse(
-            $this->client->request('GET', self::MANGA_ENDPOINT . '/' . $mangaId . '/feed', ['query' => ['limit' => $limit, 'offset' => $offset]])
-        );
+        return Http::timeout(60)->get(
+            $this->getHostUrl().self::MANGA_ENDPOINT . '/' . $mangaId . '/feed', ['limit' => $limit, 'offset' => $offset]);
     }
     public function getChapterImages(string $chapterId) : object
     {
-        return $this->handleResponse(
-            $this->client->request('GET', '/at-home/server/' . $chapterId)
-        );
+        return Http::timeout(60)->get(
+            $this->getHostUrl().'/at-home/server/' . $chapterId);
     }
     public function getChapterImage(string $baseUrl, string $chapterHash, string $imageId)
     {
-        sleep(2);
-        return Http::get("{$baseUrl}/data/{$chapterHash}/{$imageId}");
+        return Http::timeout(60)->get("{$baseUrl}/data/{$chapterHash}/{$imageId}");
     }
 
     /**
@@ -128,24 +125,22 @@ class Manga extends MangadexApi
     }
     public function auth()
     {
-        sleep(2);
         $response = Http::asForm()->post(
             'https://auth.mangadex.org/realms/mangadex/protocol/openid-connect/token',
             array_merge($this->credentials, ['grant_type'=>'password'])
         );
         return json_decode($response->getBody()->getContents(), true);
     }
-    public function getList(string $token, int $limit = 10, int $offset = 0)
+    public function getList(string $token, int $limit = 10, int $offset = 0): Response
     {
         $url = 'https://api.mangadex.org/user/follows/manga';
-        $data = Http::withHeaders(['Authorization' => 'Bearer '.$token, 'accept' => 'application/json'])
+        return Http::withHeaders(['Authorization' => 'Bearer '.$token, 'accept' => 'application/json'])
             ->get($url, ['limit' => $limit, 'offset' => $offset]);
-        return json_decode($data->getBody()->getContents(), true);
     }
 
     public function getMangaCover(string $mangaId, string $coverId)
     {
-        $filename = Http::get("https://api.mangadex.org/cover/{$coverId}")->json()['data']['attributes']['fileName'];
-        return Http::get("https://uploads.mangadex.org/covers/$mangaId/{$filename}")->body();
+        $filename = Http::timeout(60)->get("https://api.mangadex.org/cover/{$coverId}")->json()['data']['attributes']['fileName'];
+        return Http::timeout(60)->get("https://uploads.mangadex.org/covers/$mangaId/{$filename}")->body();
     }
 }

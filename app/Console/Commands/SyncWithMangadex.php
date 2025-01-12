@@ -15,9 +15,11 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Symfony\Component\Console\Helper\ProgressBar;
 
 class SyncWithMangadex extends Command
 {
+    private ?ProgressBar $progressBar = null;
     public function __construct(private MangadexApi $mangadexApi)
     {
         return parent:: __construct();
@@ -43,32 +45,37 @@ class SyncWithMangadex extends Command
     {
         $this->init();
         $this->saveList();
+        //echo 'Done'.PHP_EOL;
     }
 
     private function saveList()
     {
         $mangaList = [];
         $authData = $this->mangadexApi->auth();
-        $limit = 10;
+        sleep(1);
+        $limit = 20;//TODO increase later
         $offset = 0;
-        for (;;) {
-            $data = $this->mangadexApi->getList($authData['access_token'], $limit, $offset);
-            $mangaList = array_merge($mangaList, $data['data']);
+        do {
+            $response = $this->mangadexApi->getList($authData['access_token'], $limit, $offset);
+            if (! $response->ok()) {
+                throw new \Exception($response->getStatusCode().' '.$response->getReasonPhrase());
+            }
+            $mangaList = array_merge($mangaList, $response->json('data'));
+            if(! $this->progressBar) {
+                $this->progressBar = $this->output->createProgressBar($response->json('total'));
+                $this->progressBar->start();
+            }
             $offset += $limit;
             sleep(1);
-            $mangacount = count($mangaList);
-            echo "{$mangacount}/{$data['total']} titles presaved".PHP_EOL;
-            if (count($mangaList) >= $data['total']) {
-                break;
-            }
-        }
-        echo 'Manga list received. Starting saving manga and its chapters'. PHP_EOL;
-        $this->saveMangaAndChapters($data['data']);
+        } while ($response->json('total') >= $offset);
+//        dd($mangaList);
+        $this->saveMangaAndChapters($mangaList);
+        $this->progressBar->finish();
     }
     private function saveMangaAndChapters(array $data)
     {
         foreach ($data as $item) {
-            $manga = MangadexManga::where('mangadex_id', $item['id'])->first();
+            $manga = MangadexManga::where('mangadex_id', '=', $item['id'])->first();
             if (!$manga) {
                 $comic = $this->createComic($item);
                 $manga = new MangadexManga();
@@ -78,6 +85,7 @@ class SyncWithMangadex extends Command
                 $manga->refresh();
             }
             $this->saveChapters($manga);
+            $this->progressBar->advance();
         }
     }
 
@@ -107,7 +115,7 @@ class SyncWithMangadex extends Command
         $fields['salt'] = Str::random();
         $fields['slug'] = Comic::generateSlug($fields);
 
-        echo 'Saving manga '.$title.PHP_EOL;
+        //echo 'Saving manga '.$title.PHP_EOL;
 
         $comic = Comic::create($fields);
         $path = Comic::path($comic);
@@ -119,52 +127,47 @@ class SyncWithMangadex extends Command
     }
     private function saveChapters(MangadexManga $manga)
     {
-        echo "Saving {$manga->comic->title} chapters".PHP_EOL;
         $limit = 50;
         $offset = 0;
         $chapters = [];
-        for(;;) {
-            try{
-                $response = $this->mangadexApi->getMangaChapters($manga->mangadex_id, $limit, $offset);
-            } catch (\Exception $exception) {
-//                continue;
-                echo "Skipping. An error occurred: ".$exception->getMessage().PHP_EOL;
-                break;
+        do {
+            if($offset!=0) {
+                sleep(1);
             }
-            if($response->total <= $offset) {
-                break;
+            $response = $this->mangadexApi->getMangaChapters($manga->mangadex_id, $limit, $offset);
+            if (! $response->ok()) {
+                throw new \Exception($response->getStatusCode().' '.$response->getReasonPhrase());
             }
-            foreach ($response->data as $mangaChapter) {
-                if ($mangaChapter->attributes->translatedLanguage === 'en') {
+            foreach ($response->json('data') as $mangaChapter) {
+                if ($mangaChapter['attributes']['translatedLanguage'] === 'en') {
                     $chapters[] = $mangaChapter;
                 }
             }
             $offset += $limit;
-            sleep(1);
-        }
+        } while ($response->json('total') >= $offset);
         foreach ($chapters as $chapter) {
-            $this->saveSingleChapter($manga->comic, $chapter);
+            $this->saveSingleChapter($manga, $chapter);
+            usleep(100000);
         }
     }
 
-    private function saveSingleChapter(MangadexManga $manga, object $chapter)
+    private function saveSingleChapter(MangadexManga $manga, array $chapter)
     {
         $comic = $manga->comic;
-        echo "Saving {$comic->title} chapter {$chapter->attributes->chapter}".PHP_EOL;
-        $chapterId = $chapter->id;
-        if (MangadexChapter::where('mangadex_id', $chapterId)->exists()) {
+        $chapterId = $chapter['id'];
+        if (MangadexChapter::where('mangadex_id', '=', $chapterId)->first()) {
             return;
         }
         $fields = [
             'comic_id' => $comic->id,
             'team_id' => Team::first()->id,
-            'volume' => $chapter->attributes->volume ?: 1,
-            'chapter' => $chapter->attributes->chapter,
-            'title' => $chapter->attributes->title,
+            'volume' => $chapter['attributes']['volume'] ?: 1,
+            'chapter' => $chapter['attributes']['chapter'],
+            'title' => $chapter['attributes']['title'],
             'salt' => Str::random(),
             'views' => 1,
             'rating' => 1,
-            'language' => $chapter->attributes->translatedLanguage,
+            'language' => $chapter['attributes']['translatedLanguage'],
             'publish_start' => Carbon::yesterday(),
             'publish_end' => null,
             'published_on' => Carbon::yesterday()
@@ -182,10 +185,10 @@ class SyncWithMangadex extends Command
             MangadexChapter::create(
                 [
                     'mangadex_id' => $chapterId,
-                    'title' => $chapter->attributes->title,
-                    'chapter_number' => $chapter->attributes->chapter ?: 1,
-                    'volume_number' => $chapter->attributes->volume,
-                    'language' => $chapter->attributes->translatedLanguage,
+                    'title' => $chapter->title,
+                    'chapter_number' => $chapter->chapter,
+                    'volume_number' => $chapter->attributes,
+                    'language' => $chapter->language,
                     'is_processed' => true,
                     'chapter_id' => $chapter->id,
                     'mangadex_manga_id' => $manga->id
@@ -193,21 +196,24 @@ class SyncWithMangadex extends Command
             );
             $chapter->save();
         } catch (\Exception $exception){
+            throw $exception;
             echo $exception->getMessage(); die;
             $chapter->delete();
         }
     }
     private function saveChapterImages(Comic $comic, Chapter $chapter, string $chapterId)
     {
-        echo "Downloading image data".PHP_EOL;
-        $chapter->refresh();
+        //echo "Downloading image data".PHP_EOL;
         $response = $this->mangadexApi->getChapterImages($chapterId);
+        if (! $response->ok()) {
+            throw new \Exception($response->getStatusCode().' '.$response->getReasonPhrase());
+        }
         $path = Chapter::path($comic, $chapter);
 
         $files = [];
         $pages = [];
-        foreach ($response->chapter->data as $filename) {
-            $imageResponse = $this->mangadexApi->getChapterImage($response->baseUrl, $response->chapter->hash, $filename);
+        foreach ($response->json('chapter.data') as $filename) {
+            $imageResponse = $this->mangadexApi->getChapterImage($response->json('baseUrl'), $response->json('chapter.hash'), $filename);
             $original_file_name = strip_forbidden_chars($filename);
             $files[$original_file_name] = $imageResponse->body();
             $imagedata = getimagesizefromstring($imageResponse->body());
@@ -222,10 +228,10 @@ class SyncWithMangadex extends Command
                 'hidden' => false,
                 'licensed' => false,
             ];
-            sleep(2);
+            usleep(100000);
         }
-        echo "Image data downloaded".PHP_EOL;
-        echo "Saving chapter pages".PHP_EOL;
+        //echo "Image data downloaded".PHP_EOL;
+        //echo "Saving chapter pages".PHP_EOL;
         foreach ($files as $filename => $content) {
             $this->storeAs($path, $filename, $content);
         }

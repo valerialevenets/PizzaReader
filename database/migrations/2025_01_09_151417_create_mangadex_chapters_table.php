@@ -15,8 +15,8 @@ return new class extends Migration
             $table->id();
             $table->timestamps();
             $table->string('mangadex_id')->unique()->index();
-            $table->string('title');
-            $table->integer('chapter_number');
+            $table->string('title')->nullable();
+            $table->integer('chapter_number')->nullable();
             $table->integer('volume_number')->nullable();
             $table->string('language', '5');
             $table->boolean('is_processed')->default(false);
