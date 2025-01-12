@@ -147,7 +147,7 @@ class SyncWithMangadex extends Command
         } while ($response->json('total') >= $offset);
         foreach ($chapters as $chapter) {
             $this->saveSingleChapter($manga, $chapter);
-            usleep(100000);
+            usleep(250000);
         }
     }
 
@@ -228,7 +228,7 @@ class SyncWithMangadex extends Command
                 'hidden' => false,
                 'licensed' => false,
             ];
-            usleep(250000);
+            usleep(200000);
         }
         //echo "Image data downloaded".PHP_EOL;
         //echo "Saving chapter pages".PHP_EOL;
