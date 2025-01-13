@@ -265,7 +265,7 @@ class SyncWithMangadex extends Command
         $user->role()->associate(Role::where('name', 'admin')->first());
         $user->save();
     }
-    private function getCoverArtId(array $relationships): string
+    private function getCoverArtId(array $relationships): ?string
     {
         foreach ($relationships as $relationship) {
             if ($relationship['type'] === 'cover_art') {
