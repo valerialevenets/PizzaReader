@@ -13,6 +13,7 @@ use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Symfony\Component\Console\Helper\ProgressBar;
@@ -146,7 +147,12 @@ class SyncWithMangadex extends Command
             $offset += $limit;
         } while ($response->json('total') >= $offset);
         foreach ($chapters as $chapter) {
-            $this->saveSingleChapter($manga, $chapter);
+            try{
+                $this->saveSingleChapter($manga, $chapter);
+            } catch (\Exception $e) {
+                Log::error($e);
+                continue;
+            }
             usleep(250000);
         }
     }
@@ -196,9 +202,8 @@ class SyncWithMangadex extends Command
             );
             $chapter->save();
         } catch (\Exception $exception){
-            throw $exception;
-            echo $exception->getMessage(); die;
             $chapter->delete();
+            throw $exception;
         }
     }
     private function saveChapterImages(Comic $comic, Chapter $chapter, string $chapterId)
