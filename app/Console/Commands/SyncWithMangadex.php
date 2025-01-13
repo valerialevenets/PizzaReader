@@ -272,5 +272,6 @@ class SyncWithMangadex extends Command
                 return $relationship['id'];
             }
         }
+        return null;
     }
 }
