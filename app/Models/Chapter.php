@@ -58,7 +58,7 @@ class Chapter extends Model {
     }
 
     public function pages(): HasMany {
-        return $this->hasMany(Page::class)->orderBy('filename', 'asc')->orderBy('id', 'asc');
+        return $this->hasMany(Page::class)->orderBy('filename', SORT_NATURAL)->orderBy('id', 'asc');
     }
 
     public function views_list(): HasMany {
