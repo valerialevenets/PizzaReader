@@ -60,7 +60,7 @@ class Page extends Model {
     public static function getAllPagesForReader($comic, $chapter) {
         if (!$comic || !$chapter || $comic->id !== $chapter->comic_id) return null;
         $urls = [];
-        foreach ($chapter->pages as $page) {
+        foreach ($chapter->pages()->get()->sortBy('filename', SORT_NATURAL) as $page) {
             array_push($urls, Page::getUrl($comic, $chapter, $page));
         }
         return $urls;
