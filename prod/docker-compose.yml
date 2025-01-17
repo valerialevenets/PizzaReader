@@ -2,8 +2,6 @@ version: '3.4'
 
 services:
     cron:
-        depends_on:
-            - "db"
         build:
             context: ./..
             dockerfile: prod/cron.dockerfile
@@ -19,7 +17,6 @@ services:
             - "11300:1130"
     worker:
         depends_on:
-            - "db"
             - "btd"
         restart: unless-stopped
         build:
