@@ -5,6 +5,7 @@
             <div class="row">
                 <div class="col-sm-9 col-6">
                     <h3 class="mt-1 float-start">Users</h3>
+                    <a href="{{ route('admin.users.create') }}" class="btn btn-success ms-3">Add user</a>
                 </div>
                 <div class="col-sm-3 col-6">
                     @include('partials.card-search')
