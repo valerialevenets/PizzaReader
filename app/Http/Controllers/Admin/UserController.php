@@ -24,12 +24,13 @@ class UserController extends Controller {
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
             'password' => ['required', 'string', 'min:8']
         ]);
-        $user = User::create([
+        $user = new User([
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password)
         ]);
         $user->role()->associate(Role::where('name', 'user')->first());
+        $user->save();
         $users = User::orderBy('role_id')->orderBy('id')->paginate(50);
         $roles = Role::all();
         return view('admin.users.index', ['users' => $users, 'roles' => $roles]);
@@ -37,7 +38,7 @@ class UserController extends Controller {
 
     public function create(Request $request)
     {
-        if (Auth::user()->id !== 1) {
+        if (Auth::user()->role->name !== 'admin') {
             //TODO should get roles and check is it admin role
             return back()->with('warning', 'You are unauthorized to edit di user');
         }
@@ -71,7 +72,7 @@ class UserController extends Controller {
             'email' => ['string', 'email', 'max:191', Rule::unique('users')->ignore($user->id)],
             'password' => ['string', 'min:8', 'max:191', 'current_password:web', Rule::requiredIf(Auth::user()->id === $user->id)],
             'new_password' => ['string', 'min:8', 'max:191', 'nullable'],
-            'role' => ['integer', 'between:1,4'],
+            'role' => ['integer', 'between:1,5'],
         ]);
 
         // If target user is master admin and who invoked update is not the master admin
