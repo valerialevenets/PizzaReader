@@ -23,7 +23,7 @@ set -- "${POSITIONAL[@]}" # restore positional parameters
 
 # Starts the app
 #cp local.php ../config/autoload/local.php
-docker compose up -d --build
+docker-compose up -d --build
 
 # It can return non-zero code - just ignore
 set +e
