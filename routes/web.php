@@ -63,6 +63,8 @@ Route::prefix('admin')->middleware("log.request")->group(function () {
         });
 
         Route::prefix('users')->name('users.')->group(function(){
+            Route::get('create', [UserController::class, 'create'])->name('create')->middleware('auth.admin');
+            Route::post('create', [UserController::class, 'addUser'])->name('addUser')->middleware('auth.admin');
             Route::get('/', [UserController::class, 'index'])->name('index')->middleware('auth.manager');
             Route::redirect('/{user}', '/admin/users');
             Route::get('/{user}/edit', [UserController::class, 'edit'])->name('edit')->middleware('auth.admin');

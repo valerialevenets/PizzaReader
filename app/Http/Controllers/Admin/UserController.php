@@ -17,6 +17,32 @@ class UserController extends Controller {
         return view('admin.users.index', ['users' => $users, 'roles' => $roles]);
     }
 
+    public function addUser(Request $request)
+    {
+        $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
+            'password' => ['required', 'string', 'min:8']
+        ]);
+        $user = User::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => Hash::make($request->password)
+        ]);
+        $user->role()->associate(Role::where('name', 'user')->first());
+        $users = User::orderBy('role_id')->orderBy('id')->paginate(50);
+        $roles = Role::all();
+        return view('admin.users.index', ['users' => $users, 'roles' => $roles]);
+    }
+
+    public function create(Request $request)
+    {
+        if (Auth::user()->id !== 1) {
+            //TODO should get roles and check is it admin role
+            return back()->with('warning', 'You are unauthorized to edit di user');
+        }
+        return view('admin.users.create')->with(['action' =>  route('admin.users.addUser')]);
+    }
     public function edit($user_id) {
         $user = User::find($user_id);
         if (!$user) {
