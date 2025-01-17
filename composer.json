@@ -10,16 +10,17 @@
     "license": "Apache-2.0",
     "require": {
         "php": "^8.2",
+        "ext-gd": "*",
+        "ext-imagick": "*",
+        "ext-json": "*",
+        "ext-zip": "*",
         "guzzlehttp/guzzle": "^7.2",
         "intervention/image": "^2.5",
         "laravel/framework": "^11.0",
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.7",
         "laravel/ui": "^4.0",
-        "ext-json": "*",
-        "ext-zip": "*",
-        "ext-imagick": "*",
-        "ext-gd": "*"
+        "pda/pheanstalk": "^5.0"
     },
     "require-dev": {
         "barryvdh/laravel-debugbar": "^3.14",

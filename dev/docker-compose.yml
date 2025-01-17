@@ -2,14 +2,15 @@ version: '3.4'
 
 services:
     cron:
+        depends_on:
+            - "db"
         build:
             context: ./..
-            dockerfile: prod/cron.dockerfile
+            dockerfile: dev/cron.dockerfile
         restart: unless-stopped
         volumes:
             - ./..:/var/www/html
-            - /mnt/manga:/var/www/html/storage/app/public/comics
-            - /home/logs:/var/www/html/storage/logs
+            - ./data/storage:/var/www/html/storage
             - ./data/composer:/root/.composer
     btd:
         image: schickling/beanstalkd
@@ -17,25 +18,40 @@ services:
             - "11300:1130"
     worker:
         depends_on:
+            - "db"
             - "btd"
         restart: unless-stopped
         build:
             context: ./..
-            dockerfile: prod/worker.dockerfile
+            dockerfile: dev/worker.dockerfile
         volumes:
             - ./..:/var/www/html
-            - /mnt/manga:/var/www/html/storage/app/public/comics
-            - /home/logs:/var/www/html/storage/logs
+            - ./data/storage:/var/www/html/storage
             - ./data/composer:/root/.composer
+
     backend:
+        depends_on:
+            - "db"
         build:
             context: ./..
-            dockerfile: prod/Dockerfile
+            dockerfile: dev/Dockerfile
         restart: unless-stopped
         ports:
             - "8880:80"
         volumes:
             - ./..:/var/www/html
-            - /mnt/manga:/var/www/html/storage/app/public/comics
-            - /home/logs:/var/www/html/storage/logs
+            - ./data/storage:/var/www/html/storage
             - ./data/composer:/root/.composer
+
+    db:
+        image: mysql:8.0.40-debian
+        volumes:
+            - ./data/mysql:/var/lib/mysql
+            - ./data/mysql:/home/mysql
+        environment:
+            - MYSQL_ROOT_PASSWORD=password
+            - MYSQL_DATABASE=pizza
+            - MYSQL_USER=pizza
+            - MYSQL_PASSWORD=password
+        ports:
+            -   "8806:3306"
