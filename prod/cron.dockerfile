@@ -1,7 +1,7 @@
 FROM php:8.2
 
 # Add crontab file in the cron directory
-COPY dev/crontab /etc/cron.d/pizzareader
+COPY prod/crontab /etc/cron.d/pizzareader
 
 RUN apt-get update \
  && apt-get install -y cron git zlib1g-dev libicu-dev libmagickwand-dev libmcrypt-dev libzip-dev zip libonig-dev \
@@ -14,9 +14,9 @@ RUN apt-get update \
            | php -- --install-dir=/usr/local/bin --filename=composer --version=2.1.6 \
      && composer self-update
 
-COPY dev/php.ini /usr/local/etc/php/php.ini-production
-COPY dev/php.ini /usr/local/etc/php/php.ini-development
-COPY dev/php.ini /usr/local/etc/php/php.ini
+COPY prod/php.ini /usr/local/etc/php/php.ini-production
+COPY prod/php.ini /usr/local/etc/php/php.ini-development
+COPY prod/php.ini /usr/local/etc/php/php.ini
 
 WORKDIR /var/www/html
 

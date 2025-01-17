@@ -7,9 +7,9 @@ RUN apt-get update \
  && pecl install imagick mcrypt \
  && docker-php-ext-enable imagick gd
 
-COPY dev/php.ini /usr/local/etc/php/php.ini-production
-COPY dev/php.ini /usr/local/etc/php/php.ini-development
-COPY dev/php.ini /usr/local/etc/php/php.ini
+COPY prod/php.ini /usr/local/etc/php/php.ini-production
+COPY prod/php.ini /usr/local/etc/php/php.ini-development
+COPY prod/php.ini /usr/local/etc/php/php.ini
 
 WORKDIR /var/www/html
 
