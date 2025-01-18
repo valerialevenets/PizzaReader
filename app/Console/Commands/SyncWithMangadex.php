@@ -44,7 +44,6 @@ class SyncWithMangadex extends Command
      */
     public function handle()
     {
-        $this->init();
         $this->saveList();
         //echo 'Done'.PHP_EOL;
     }
@@ -69,7 +68,6 @@ class SyncWithMangadex extends Command
             $offset += $limit;
             sleep(1);
         } while ($response->json('total') >= $offset);
-//        dd($mangaList);
         $this->saveMangaAndChapters($mangaList);
         $this->progressBar->finish();
     }
@@ -84,6 +82,8 @@ class SyncWithMangadex extends Command
                 $manga->comic_id = $comic->id;
                 $manga->save();
                 $manga->refresh();
+            } else {
+                $this->updateComic($manga->comic, $item);
             }
             $this->saveChapters($manga);
             $this->progressBar->advance();
@@ -91,6 +91,27 @@ class SyncWithMangadex extends Command
     }
 
     private function createComic(array $item): Comic
+    {
+        $fields = $this->convertMangadexFields($item);
+        $fields['cover_image'] = $this->mangadexApi->getMangaCover($item['id'], $this->getCoverArtId($item['relationships']));
+        $fields['thumbnail'] = 'thumbnail.png';
+        $fields['salt'] = Str::random();
+        $fields['slug'] = Comic::generateSlug($fields);
+
+        $comic = Comic::create($fields);
+        $path = Comic::path($comic);
+        Storage::makeDirectory($path);
+        Storage::setVisibility($path, 'public');
+        $this->storeAs($path, $comic->thumbnail, $fields['cover_image']);
+        $comic->refresh();
+        return $comic;
+    }
+    private function updateComic(Comic $comic, array $fields): void
+    {
+        $fields = array_intersect_key($this->convertMangadexFields($fields), array_flip(['adult', 'target', 'status']));
+        $comic->update($fields);
+    }
+    private function convertMangadexFields(array $item): array
     {
         $genres = [];
         foreach ($item['attributes']['tags'] as $tag) {
@@ -110,21 +131,11 @@ class SyncWithMangadex extends Command
             'genres' => implode(',', $genres),
             'order_index' => 0,
             'comic_format_id' => 1,
-            'cover_image' => $this->mangadexApi->getMangaCover($item['id'], $this->getCoverArtId($item['relationships'])),
-            'thumbnail' => 'thumbnail.png',
+            'adult' => $this->isAdult($item['attributes']['contentRating']),
+            'target' => mb_ucfirst((string)$item['attributes']['publicationDemographic']),
+            'status' => mb_ucfirst((string)$item['attributes']['status']),
         ];
-        $fields['salt'] = Str::random();
-        $fields['slug'] = Comic::generateSlug($fields);
-
-        //echo 'Saving manga '.$title.PHP_EOL;
-
-        $comic = Comic::create($fields);
-        $path = Comic::path($comic);
-        Storage::makeDirectory($path);
-        Storage::setVisibility($path, 'public');
-        $this->storeAs($path, $comic->thumbnail, $fields['cover_image']);
-        $comic->refresh();
-        return $comic;
+        return $fields;
     }
     private function saveChapters(MangadexManga $manga)
     {
@@ -247,24 +258,6 @@ class SyncWithMangadex extends Command
     {
         Storage::disk('local')->put("{$path}/$name", $content);
     }
-    private function init()
-    {
-        if (Team::all()->count() != 0) {
-            return;
-        }
-        Team::create(
-            [
-                'name' => 'test', 'slug' => 'test', 'url' => 'google.com',
-            ]
-        );
-        $user = User::create([
-            'name' => 'Valerie',
-            'email' => 'v@v.c',
-            'password' => Hash::make('12345678'),
-        ]);
-        $user->role()->associate(Role::where('name', 'admin')->first());
-        $user->save();
-    }
     private function getCoverArtId(array $relationships): ?string
     {
         foreach ($relationships as $relationship) {
@@ -273,5 +266,15 @@ class SyncWithMangadex extends Command
             }
         }
         return null;
+    }
+
+    private function isAdult(string $contentRating): bool
+    {
+        $adultRatings = array_flip([
+            'erotica',
+//            'suggestive',
+            'pornographic'
+        ]);
+        return isset($adultRatings[$contentRating]);
     }
 }
