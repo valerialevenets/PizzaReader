@@ -7,20 +7,17 @@ use App\Models\Chapter;
 use App\Models\Comic;
 use App\Models\MangadexChapter;
 use App\Models\MangadexManga;
-use App\Models\Role;
 use App\Models\Team;
-use App\Models\User;
 use App\Saver\MangadexSaver;
 use Illuminate\Console\Command;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Symfony\Component\Console\Helper\ProgressBar;
 
-class SyncWithMangadex extends Command
+class Test extends Command
 {
     private ?ProgressBar $progressBar = null;
     public function __construct(private MangadexApi $mangadexApi, private MangadexSaver $mangadexSaver)
@@ -32,7 +29,7 @@ class SyncWithMangadex extends Command
      *
      * @var string
      */
-    protected $signature = 'app:sync-with-mangadex';
+    protected $signature = 'test-save';
 
     /**
      * The console command description.
@@ -41,9 +38,6 @@ class SyncWithMangadex extends Command
      */
     protected $description = 'Command description';
 
-    /**
-     * Execute the console command.
-     */
     public function handle()
     {
         $this->saveList();
