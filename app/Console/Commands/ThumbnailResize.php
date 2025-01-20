@@ -21,7 +21,7 @@ class ThumbnailResize extends Command {
         foreach ($comics as $comic) {
             $path = Comic::path($comic);
             $file = Image::make(storage_path("app/$path/$comic->thumbnail"));
-            ComicController::storeSmall($file, $path, $comic->thumbnail);
+            ComicController::storeSmall($file, $path, $comic->thumbnail, 250, 355);
         }
     }
 }
