@@ -124,7 +124,7 @@ class Test extends Command
                 throw new \Exception($response->getStatusCode().' '.$response->getReasonPhrase());
             }
             foreach ($response->json('data') as $mangaChapter) {
-                if (in_array($mangaChapter['attributes']['translatedLanguage'], ['en', 'ru'])) {
+                if (in_array($mangaChapter['attributes']['translatedLanguage'], ['en', 'ru', 'ukr', 'ua'])) {
                     $chapters[] = $mangaChapter;
                 }
             }
