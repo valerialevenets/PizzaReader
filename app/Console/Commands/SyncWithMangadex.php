@@ -32,7 +32,7 @@ class SyncWithMangadex extends Command
      *
      * @var string
      */
-    protected $signature = 'app:sync-with-mangadex';
+    protected $signature = 'manga:sync';
 
     /**
      * The console command description.
@@ -77,7 +77,7 @@ class SyncWithMangadex extends Command
     {
         foreach ($data as $item) {
             try{
-                $manga = $this->mangadexSaver->createManga(
+                $manga = $this->mangadexSaver->saveManga(
                     $item['id'],
                     $this->convertMangadexFields($item),
                     $this->mangadexApi->getMangaCover($item['id'], $this->getCoverArtId($item['relationships']))
@@ -150,7 +150,7 @@ class SyncWithMangadex extends Command
     private function saveSingleChapter(MangadexManga $manga, array $chapter)
     {
         $chapterId = $chapter['id'];
-        if (MangadexChapter::where('mangadex_id', '=', $chapterId)->first()) {
+        if ($manga->chapters()->where('mangadex_id', '=', $chapterId)->first()) {
             return;
         }
         $files = $this->getChapterImages($chapterId);
