@@ -105,11 +105,8 @@ class SyncWithMangadex extends Command
         $fields = [
             'name' => $title,
             'description' => $description,
-            'hidden' => false,
             'author' => '',
             'genres' => implode(',', $genres),
-            'order_index' => 0,
-            'comic_format_id' => 1,
             'adult' => $this->isAdult($item['attributes']['contentRating']),
             'target' => mb_ucfirst((string)$item['attributes']['publicationDemographic']),
             'status' => mb_ucfirst((string)$item['attributes']['status']),
