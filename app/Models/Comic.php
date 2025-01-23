@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\File;
@@ -42,6 +43,10 @@ class Comic extends Model {
         }
     }
 
+    public function mangadexManga(): HasOne
+    {
+        return $this->hasOne(MangadexManga::class);
+    }
     public function format() {
         return $this->belongsTo(ComicFormat::class);
     }

@@ -32,7 +32,7 @@ class SyncWithMangadex extends Command
      *
      * @var string
      */
-    protected $signature = 'manga:sync';
+    protected $signature = 'mangadex:sync';
 
     /**
      * The console command description.
@@ -76,12 +76,12 @@ class SyncWithMangadex extends Command
     private function saveMangaAndChapters(array $data)
     {
         foreach ($data as $item) {
+            $manga = $this->mangadexSaver->saveManga(
+                $item['id'],
+                $this->convertMangadexFields($item),
+                $this->mangadexApi->getMangaCover($item['id'], $this->getCoverArtId($item['relationships']))
+            );
             try{
-                $manga = $this->mangadexSaver->saveManga(
-                    $item['id'],
-                    $this->convertMangadexFields($item),
-                    $this->mangadexApi->getMangaCover($item['id'], $this->getCoverArtId($item['relationships']))
-                );
             } catch (QueryException $exception) {
                 Log::error($exception);
                 continue;
@@ -115,6 +115,15 @@ class SyncWithMangadex extends Command
             'status' => mb_ucfirst((string)$item['attributes']['status']),
         ];
         return $fields;
+    }
+    private function convertMangadexChapterFields(array $chapter): array
+    {
+        return [
+            'volume' => $chapter['attributes']['volume'],
+            'chapter' => $chapter['attributes']['chapter'],
+            'title' => $chapter['attributes']['title'],
+            'language' => $chapter['attributes']['translatedLanguage'],
+        ];
     }
     private function saveChapters(MangadexManga $manga)
     {
@@ -154,7 +163,12 @@ class SyncWithMangadex extends Command
             return;
         }
         $files = $this->getChapterImages($chapterId);
-        $this->mangadexSaver->saveMangadexChapter($manga, $chapter, $files);
+        $this->mangadexSaver->saveMangadexChapter(
+            $manga,
+            $this->convertMangadexChapterFields($chapter),
+            $chapterId,
+            $files
+        );
     }
     private function getChapterImages(string $chapterId): array
     {

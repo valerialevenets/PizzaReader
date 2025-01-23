@@ -71,7 +71,7 @@ class Test extends Command
     {
         foreach ($data as $item) {
             try{
-                $manga = $this->mangadexSaver->createManga(
+                $manga = $this->mangadexSaver->saveManga(
                     $item['id'],
                     $this->convertMangadexFields($item),
                     $this->mangadexApi->getMangaCover($item['id'], $this->getCoverArtId($item['relationships']))
