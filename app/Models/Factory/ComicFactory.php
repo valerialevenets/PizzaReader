@@ -1,11 +1,15 @@
 <?php
 namespace App\Models\Factory;
 use App\Models\Comic;
-use Illuminate\Support\Facades\Storage;
+use App\Storage\Storage;
 use Illuminate\Support\Str;
 
 class ComicFactory
 {
+    public function __construct(private readonly Storage $storage)
+    {
+    }
+
     public function create(array $fields, ?string $coverImage = null): Comic
     {
         //TODO add validation
@@ -17,8 +21,7 @@ class ComicFactory
 
         $comic = new Comic($fields);
         $path = Comic::path($comic);
-        Storage::makeDirectory($path);
-        Storage::setVisibility($path, 'public');
+        $this->storage->createVisibleDirectory($path);
         if ($coverImage) {
             $comic->thumbnail = 'thumbnail.png';
             $this->storeAs($path, $comic->thumbnail, $coverImage);
@@ -28,6 +31,6 @@ class ComicFactory
 
     private function storeAs($path, $name, $content)
     {
-        Storage::disk('local')->put("{$path}/$name", $content);
+        $this->storage->put($path, $name, $content);
     }
 }
