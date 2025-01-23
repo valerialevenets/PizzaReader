@@ -4,9 +4,13 @@ namespace App\Saver;
 
 use App\Models\Chapter;
 use App\Models\Comic;
+use App\Models\Factory\ChapterFactory;
+use App\Models\Factory\ComicFactory;
+use App\Models\Factory\MangadexChapterFactory;
 use App\Models\MangadexChapter;
 use App\Models\MangadexManga;
 use App\Models\Team;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
@@ -14,6 +18,13 @@ use Illuminate\Support\Str;
 
 class MangadexSaver
 {
+    public function __construct(
+        private ComicFactory $comicFactory,
+        private ChapterFactory $chapterFactory,
+        private MangadexChapterFactory $mangadexChapterFactory,
+    ){}
+
+
     /**
      * @param string $mangadexId
      * @param array $fields
@@ -21,63 +32,35 @@ class MangadexSaver
      * @return MangadexManga
      * @throws QueryException
      */
-    public function createManga(string $mangadexId, array $fields, string $coverImage): MangadexManga
+    public function saveManga(string $mangadexId, array $fields, string $coverImage): MangadexManga
     {
         $manga = MangadexManga::where('mangadex_id', '=', $mangadexId)->first();
         if (! $manga) {
-            $comic = $this->createComic($fields, $coverImage);
-            $manga = new MangadexManga();
-            $manga->mangadex_id = $mangadexId;
-            $manga->comic_id = $comic->id;
-            $manga->save();
-            $manga->refresh();
+            $manga = new MangadexManga(['mangadex_id' => $mangadexId]);
+            $comic = $this->comicFactory->create($fields, $coverImage);
+            $comic->save();
+            $comic->mangadexManga()->save($manga);
         } else {
             $this->updateComic($manga->comic, $fields);
         }
         return $manga;
     }
-    public function saveMangadexChapter(MangadexManga $manga, array $chapter, array $files)
+    public function saveMangadexChapter(MangadexManga $manga, array $chapter, string $mangadexChapterId, array $files)
     {
-        $chapterId = $chapter['id'];
-        if (MangadexChapter::where('mangadex_id', '=', $chapterId)->first()) {
+        //TODO create factory for both mangadex chapter and comic chapter
+        if ($manga->chapters()->where('mangadex_id', '=', $mangadexChapterId)->first()) {
             return;
         }
-        $fields = [
-            'comic_id' => $manga->comic->id,
-            'team_id' => Team::first()->id,
-            'volume' => $chapter['attributes']['volume'] ?: 1,
-            'chapter' => $chapter['attributes']['chapter'],
-            'title' => $chapter['attributes']['title'],
-            'salt' => Str::random(),
-            'language' => $chapter['attributes']['translatedLanguage'],
-            'publish_start' => Carbon::now(),
-            'publish_end' => null,
-            'published_on' => Carbon::now()
-        ] ;
-        $fields['slug'] = Chapter::generateSlug($fields);
-
-        $chapter = Chapter::create($fields);
-        $path = Chapter::path($manga->comic, $chapter);
-        Storage::makeDirectory($path);
-        Storage::setVisibility($path, 'public');
+        $chapter = $this->chapterFactory->create($manga->comic, $chapter);
         $chapter->save();
         $chapter->refresh();
         try{
             $this->saveChapterPages($chapter, $files);
-            MangadexChapter::create(
-                [
-                    'mangadex_id' => $chapterId,
-                    'title' => $chapter->title,
-                    'chapter_number' => $chapter->chapter,
-                    'volume_number' => $chapter->attributes,
-                    'language' => $chapter->language,
-                    'is_processed' => true,
-                    'chapter_id' => $chapter->id,
-                    'mangadex_manga_id' => $manga->id
-                ]
-            );
+            $mangadexChapter = $this->mangadexChapterFactory->create($chapter, $manga, $mangadexChapterId);
+            $mangadexChapter->save();
             $chapter->save();
         } catch (\Exception $exception){
+            Storage::deleteDirectory(Chapter::path($manga->comic, $chapter));
             $chapter->delete();
             throw $exception;
         }
@@ -87,45 +70,26 @@ class MangadexSaver
         $path = Chapter::path($chapter->comic, $chapter);
         $pages = [];
         foreach ($files as $filename => $content) {
-            $imagedata = getimagesizefromstring($content);
-            $size = mb_strlen($content, '8bit');
-            $pages[] =  [
-                'chapter_id' => $chapter->id,
-                'filename' => $filename,
-                'size' => $size,
-                'width' => $imagedata[0],
-                'height' => $imagedata[1],
-                'mime' => $imagedata['mime'],
-                'hidden' => false,
-                'licensed' => false,
-            ];
+            $pages[] =  $this->getPageData($chapter, $filename, $content);
         }
         foreach ($files as $filename => $content) {
             $this->storeAs($path, $filename, $content);
         }
         $chapter->pages()->createMany($pages);
     }
-
-    /**
-     * @param array $fields
-     * @param string $coverImage
-     * @return Comic
-     * @throws QueryException
-     */
-    private function createComic(array $fields, string $coverImage): Comic
+    private function getPageData(Chapter $chapter, string $filename, string $content): array
     {
-        //fields should be already converted from mangadex format
-        $fields['thumbnail'] = 'thumbnail.png';
-        $fields['salt'] = Str::random();
-        $fields['slug'] = Comic::generateSlug($fields);
-
-        $comic = Comic::create($fields);
-        $path = Comic::path($comic);
-        Storage::makeDirectory($path);
-        Storage::setVisibility($path, 'public');
-        $this->storeAs($path, $comic->thumbnail, $coverImage);
-        $comic->refresh();
-        return $comic;
+        $imagedata = getimagesizefromstring($content);
+        return [
+            'chapter_id' => $chapter->id,
+            'filename' => $filename,
+            'size' => mb_strlen($content, '8bit'),
+            'width' => $imagedata[0],
+            'height' => $imagedata[1],
+            'mime' => $imagedata['mime'],
+            'hidden' => false,
+            'licensed' => false,
+        ];
     }
     private function updateComic(Comic $comic, array $fields): void
     {
@@ -136,8 +100,8 @@ class MangadexSaver
         $comic->update($fields);
     }
 
-    private function storeAs($path, $name, $content)
+    private function storeAs($path, $name, $content): bool
     {
-        Storage::disk('local')->put("{$path}/$name", $content);
+        return Storage::disk('local')->put("{$path}/$name", $content);
     }
 }

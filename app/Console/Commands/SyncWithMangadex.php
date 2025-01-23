@@ -32,7 +32,7 @@ class SyncWithMangadex extends Command
      *
      * @var string
      */
-    protected $signature = 'app:sync-with-mangadex';
+    protected $signature = 'mangadex:sync';
 
     /**
      * The console command description.
@@ -55,7 +55,7 @@ class SyncWithMangadex extends Command
         $mangaList = [];
         $authData = $this->mangadexApi->auth();
         sleep(1);
-        $limit = 20;//TODO increase later
+        $limit = 40;//TODO increase later
         $offset = 0;
         do {
             $response = $this->mangadexApi->getList($authData['access_token'], $limit, $offset);
@@ -76,16 +76,15 @@ class SyncWithMangadex extends Command
     private function saveMangaAndChapters(array $data)
     {
         foreach ($data as $item) {
-            try{
-                $manga = $this->mangadexSaver->createManga(
-                    $item['id'],
-                    $this->convertMangadexFields($item),
-                    $this->mangadexApi->getMangaCover($item['id'], $this->getCoverArtId($item['relationships']))
-                );
-            } catch (QueryException $exception) {
-                Log::error($exception);
+            $fields = $this->convertMangadexFields($item);
+            if (strlen($fields['genres']) >=255) {
                 continue;
             }
+            $manga = $this->mangadexSaver->saveManga(
+                $item['id'],
+                $fields,
+                $this->mangadexApi->getMangaCover($item['id'], $this->getCoverArtId($item['relationships']))
+            );
             $this->saveChapters($manga);
             $this->progressBar->advance();
         }
@@ -105,16 +104,22 @@ class SyncWithMangadex extends Command
         $fields = [
             'name' => $title,
             'description' => $description,
-            'hidden' => false,
             'author' => '',
             'genres' => implode(',', $genres),
-            'order_index' => 0,
-            'comic_format_id' => 1,
             'adult' => $this->isAdult($item['attributes']['contentRating']),
             'target' => mb_ucfirst((string)$item['attributes']['publicationDemographic']),
             'status' => mb_ucfirst((string)$item['attributes']['status']),
         ];
         return $fields;
+    }
+    private function convertMangadexChapterFields(array $chapter): array
+    {
+        return [
+            'volume' => $chapter['attributes']['volume'],
+            'chapter' => $chapter['attributes']['chapter'],
+            'title' => $chapter['attributes']['title'],
+            'language' => $chapter['attributes']['translatedLanguage'],
+        ];
     }
     private function saveChapters(MangadexManga $manga)
     {
@@ -150,11 +155,16 @@ class SyncWithMangadex extends Command
     private function saveSingleChapter(MangadexManga $manga, array $chapter)
     {
         $chapterId = $chapter['id'];
-        if (MangadexChapter::where('mangadex_id', '=', $chapterId)->first()) {
+        if ($manga->chapters()->where('mangadex_id', '=', $chapterId)->first()) {
             return;
         }
         $files = $this->getChapterImages($chapterId);
-        $this->mangadexSaver->saveMangadexChapter($manga, $chapter, $files);
+        $this->mangadexSaver->saveMangadexChapter(
+            $manga,
+            $this->convertMangadexChapterFields($chapter),
+            $chapterId,
+            $files
+        );
     }
     private function getChapterImages(string $chapterId): array
     {

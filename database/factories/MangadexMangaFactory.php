@@ -17,7 +17,7 @@ class MangadexMangaFactory extends Factory
     public function definition(): array
     {
         return [
-            //
+            'mangadex_id' => fake()->unique()->uuid(),
         ];
     }
 }
