@@ -55,7 +55,7 @@ class SyncWithMangadex extends Command
         $mangaList = [];
         $authData = $this->mangadexApi->auth();
         sleep(1);
-        $limit = 20;//TODO increase later
+        $limit = 40;//TODO increase later
         $offset = 0;
         do {
             $response = $this->mangadexApi->getList($authData['access_token'], $limit, $offset);
@@ -76,16 +76,15 @@ class SyncWithMangadex extends Command
     private function saveMangaAndChapters(array $data)
     {
         foreach ($data as $item) {
-            $manga = $this->mangadexSaver->saveManga(
-                $item['id'],
-                $this->convertMangadexFields($item),
-                $this->mangadexApi->getMangaCover($item['id'], $this->getCoverArtId($item['relationships']))
-            );
-            try{
-            } catch (QueryException $exception) {
-                Log::error($exception);
+            $fields = $this->convertMangadexFields($item);
+            if (strlen($fields['genres']) >=255) {
                 continue;
             }
+            $manga = $this->mangadexSaver->saveManga(
+                $item['id'],
+                $fields,
+                $this->mangadexApi->getMangaCover($item['id'], $this->getCoverArtId($item['relationships']))
+            );
             $this->saveChapters($manga);
             $this->progressBar->advance();
         }
