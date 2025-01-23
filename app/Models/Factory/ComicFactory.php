@@ -1,6 +1,7 @@
 <?php
 namespace App\Models\Factory;
 use App\Models\Comic;
+use App\Models\ComicFormat;
 use App\Storage\Storage;
 use Illuminate\Support\Str;
 
@@ -16,7 +17,7 @@ class ComicFactory
         $fields['salt'] = Str::random();
         $fields['slug'] = Comic::generateSlug($fields);
         $fields['hidden'] = false;
-        $fields['comic_format_id'] = 1;
+        $fields['comic_format_id'] = ComicFormat::all()->last()->id;
         $fields['order_index'] = 0;
 
         $comic = new Comic($fields);
