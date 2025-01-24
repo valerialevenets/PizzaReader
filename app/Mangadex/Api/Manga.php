@@ -2,16 +2,20 @@
 
 namespace App\Mangadex\Api;
 
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 
 class Manga extends MangadexApi
 {
     private readonly array $credentials;
-    private const   MANGA_ENDPOINT = '/manga';
+    private const MANGA_ENDPOINT = '/manga';
     private const RELATION_ENDPOINT = '/relation';
     private const RANDOM_ENDPOINT = '/random';
     private const TAG_ENDPOINT = '/tag';
+    private const FEED_ENDPOINT = '/feed';
+    private const AGGREGATE_ENDPOINT = '/aggregate';
+    private const CHAPTER_ENDPOINT = '/chapter';
 
     public function __construct()
     {
@@ -66,62 +70,68 @@ class Manga extends MangadexApi
 
         return $this->handleResponse($response);
     }
+    public function getMangaChapter(string $chapterId, array $includes = ['manga','scanlation_group','user']) : Response
+    {
+        return Http::timeout(60)->get(
+            $this->getHostUrl().self::CHAPTER_ENDPOINT . '/' . $chapterId);
+    }
+
+    /**
+     * @param string $mangaId
+     * @param int $limit
+     * @param int $offset
+     * @return Response
+     * @throws ConnectionException
+     */
     public function getMangaChapters(string $mangaId, int $limit = 10, int $offset = 0) : Response
     {
         return Http::timeout(60)->get(
-            $this->getHostUrl().self::MANGA_ENDPOINT . '/' . $mangaId . '/feed', ['limit' => $limit, 'offset' => $offset]);
+            $this->getHostUrl().self::MANGA_ENDPOINT . '/' . $mangaId . self::FEED_ENDPOINT, ['limit' => $limit, 'offset' => $offset]);
     }
-    public function getChapterImages(string $chapterId) : object
+
+    /**
+     * @param string $chapterId
+     * @return Response
+     * @throws ConnectionException
+     */
+    public function getChapterImages(string $chapterId) : Response
     {
         return Http::timeout(60)->get(
             $this->getHostUrl().'/at-home/server/' . $chapterId);
     }
-    public function getChapterImage(string $baseUrl, string $chapterHash, string $imageId)
+
+    /**
+     * @param string $baseUrl
+     * @param string $chapterHash
+     * @param string $imageId
+     * @return Response
+     * @throws ConnectionException
+     */
+    public function getChapterImage(string $baseUrl, string $chapterHash, string $imageId): Response
     {
         return Http::timeout(60)->get("{$baseUrl}/data/{$chapterHash}/{$imageId}");
     }
 
+
     /**
-     * Get a random Manga
-     *
-     * @param array $queryParams
-     *
-     * @return object
+     * @return Response
+     * @throws ConnectionException
      */
-
-    public function getRandomManga (array $queryParams = []) : object
+    public function getMangaTags () : Response
     {
-        $query = $this->buildQueryParams($queryParams);
-
-        $response = $this->client->request('GET', self::MANGA_ENDPOINT . self::RANDOM_ENDPOINT, [
-            'query' => $query,
-        ]);
-
-        return $this->handleResponse($response);
+        return Http::get($this->getHostUrl().self::MANGA_ENDPOINT . self::TAG_ENDPOINT);
     }
 
-    /**
-     * Get all manga tags
-     *
-     * @return object
-     */
-    public function getMangaTags () : object
-    {
-        $response = $this->client->request('GET', self::MANGA_ENDPOINT . self::TAG_ENDPOINT);
-
-        return $this->handleResponse($response);
-    }
 
     /**
-     * TODO: Get manga volumes and chapters
-     *
-     * @param array $queryParams
-     *
-     * @return object
+     * @param string $mangaId
+     * @return Response
+     * @throws ConnectionException
      */
-    public function getMangaAggregate(Type $var = null)
+    public function getMangaAggregate(string $mangaId): Response
     {
-        //
+        return Http::timeout(60)->get(
+            $this->getHostUrl().self::MANGA_ENDPOINT . '/' . $mangaId . self::AGGREGATE_ENDPOINT);
     }
     public function auth()
     {
@@ -131,6 +141,14 @@ class Manga extends MangadexApi
         );
         return json_decode($response->getBody()->getContents(), true);
     }
+
+    /**
+     * @param string $token
+     * @param int $limit
+     * @param int $offset
+     * @return Response
+     * @throws ConnectionException
+     */
     public function getList(string $token, int $limit = 10, int $offset = 0): Response
     {
         $url = 'https://api.mangadex.org/user/follows/manga';
@@ -138,6 +156,12 @@ class Manga extends MangadexApi
             ->get($url, ['limit' => $limit, 'offset' => $offset]);
     }
 
+    /**
+     * @param string $mangaId
+     * @param string $coverId
+     * @return string
+     * @throws ConnectionException
+     */
     public function getMangaCover(string $mangaId, string $coverId)
     {
         $filename = Http::timeout(60)->get("https://api.mangadex.org/cover/{$coverId}")->json()['data']['attributes']['fileName'];

@@ -3,21 +3,10 @@
 namespace App\Console\Commands;
 
 use App\Mangadex\Api\Manga as MangadexApi;
-use App\Models\Chapter;
-use App\Models\Comic;
-use App\Models\MangadexChapter;
 use App\Models\MangadexManga;
-use App\Models\Role;
-use App\Models\Team;
-use App\Models\User;
 use App\Saver\MangadexSaver;
 use Illuminate\Console\Command;
-use Illuminate\Database\QueryException;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use Symfony\Component\Console\Helper\ProgressBar;
 
 class SyncWithMangadex extends Command
@@ -121,26 +110,56 @@ class SyncWithMangadex extends Command
             'language' => $chapter['attributes']['translatedLanguage'],
         ];
     }
-    private function saveChapters(MangadexManga $manga)
+    private function getMangaChapters(MangadexManga $manga): array
     {
         $limit = 50;
         $offset = 0;
         $chapters = [];
         do {
             if($offset!=0) {
-                sleep(1);
+                usleep(500000);
             }
             $response = $this->mangadexApi->getMangaChapters($manga->mangadex_id, $limit, $offset);
             if (! $response->ok()) {
                 throw new \Exception($response->getStatusCode().' '.$response->getReasonPhrase());
             }
-            foreach ($response->json('data') as $mangaChapter) {
-                if (in_array($mangaChapter['attributes']['translatedLanguage'], ['en', 'ru', 'ukr', 'ua'])) {
-                    $chapters[] = $mangaChapter;
-                }
-            }
+            $chapters = array_merge($chapters, $response->json('data'));
             $offset += $limit;
         } while ($response->json('total') >= $offset);
+
+        if(empty($chapters)) {
+            $response = $this->mangadexApi->getMangaAggregate($manga->mangadex_id);
+            if (! $response->ok()) {
+                throw new \Exception($response->getStatusCode().' '.$response->getReasonPhrase());
+            }
+            $chapterIds = [];
+            foreach ($response->json('volumes') as $volume) {
+                foreach ($volume['chapters'] as $chapter) {
+                    $chapterIds[$chapter['id']] = $chapter['id'];
+                    foreach ($chapter['others'] as $other) {
+                        $chapterIds[$other] = $other;
+                    }
+                }
+            }
+            foreach ($chapterIds as $chapterId) {
+                usleep(500000);
+                $response = $this->mangadexApi->getMangaChapter($chapterId);
+                if (! $response->ok()) {
+                    throw new \Exception($response->getStatusCode().' '.$response->getReasonPhrase());
+                }
+                $chapters[] = $response->json('data');
+            }
+        }
+        return $chapters;
+    }
+    private function saveChapters(MangadexManga $manga)
+    {
+        $chapters = [];
+        foreach ($this->getMangaChapters($manga) as $mangaChapter) {
+            if (in_array($mangaChapter['attributes']['translatedLanguage'], ['en', 'ru', 'ukr', 'ua'])) {
+                $chapters[] = $mangaChapter;
+            }
+        }
         foreach ($chapters as $chapter) {
             try{
                 $this->saveSingleChapter($manga, $chapter);
@@ -151,7 +170,6 @@ class SyncWithMangadex extends Command
             usleep(250000);
         }
     }
-
     private function saveSingleChapter(MangadexManga $manga, array $chapter)
     {
         $chapterId = $chapter['id'];
