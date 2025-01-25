@@ -7,14 +7,10 @@ use App\Models\Comic;
 use App\Models\Factory\ChapterFactory;
 use App\Models\Factory\ComicFactory;
 use App\Models\Factory\MangadexChapterFactory;
-use App\Models\MangadexChapter;
 use App\Models\MangadexManga;
-use App\Models\Team;
-use Illuminate\Database\Eloquent\Model;
+use App\Models\Repository\MangadexMangaRepository;
+use App\Storage\Storage;
 use Illuminate\Database\QueryException;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 
 class MangadexSaver
 {
@@ -22,6 +18,8 @@ class MangadexSaver
         private ComicFactory $comicFactory,
         private ChapterFactory $chapterFactory,
         private MangadexChapterFactory $mangadexChapterFactory,
+        private Storage $storage,
+        private MangadexMangaRepository $mangadexMangaRepository,
     ){}
 
 
@@ -34,7 +32,7 @@ class MangadexSaver
      */
     public function saveManga(string $mangadexId, array $fields, string $coverImage): MangadexManga
     {
-        $manga = MangadexManga::where('mangadex_id', '=', $mangadexId)->first();
+        $manga = $this->mangadexMangaRepository->findByMangadexId($mangadexId);
         if (! $manga) {
             $manga = new MangadexManga(['mangadex_id' => $mangadexId]);
             $comic = $this->comicFactory->create($fields, $coverImage);
@@ -47,7 +45,6 @@ class MangadexSaver
     }
     public function saveMangadexChapter(MangadexManga $manga, array $chapter, string $mangadexChapterId, array $files)
     {
-        //TODO create factory for both mangadex chapter and comic chapter
         if ($manga->chapters()->where('mangadex_id', '=', $mangadexChapterId)->first()) {
             return;
         }
@@ -60,7 +57,7 @@ class MangadexSaver
             $mangadexChapter->save();
             $chapter->save();
         } catch (\Exception $exception){
-            Storage::deleteDirectory(Chapter::path($manga->comic, $chapter));
+            $this->storage->deleteDirectory(Chapter::path($manga->comic, $chapter));
             $chapter->delete();
             throw $exception;
         }
@@ -102,6 +99,6 @@ class MangadexSaver
 
     private function storeAs($path, $name, $content): bool
     {
-        return Storage::disk('local')->put("{$path}/$name", $content);
+        return $this->storage->put($path, $name, $content);
     }
 }
