@@ -15,7 +15,7 @@ class MangadexChapterFactory
                 'mangadex_id' => $mangadexChapterId,
                 'title' => $chapter->title,
                 'chapter_number' => $chapter->chapter,
-                'volume_number' => $chapter->attributes,
+                'volume_number' => $chapter->volume,
                 'language' => $chapter->language,
                 'is_processed' => true,
                 'chapter_id' => $chapter->id,
