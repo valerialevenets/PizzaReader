@@ -72,6 +72,7 @@ class MangadexSaver
         foreach ($files as $filename => $content) {
             $this->storeAs($path, $filename, $content);
         }
+        //TODO refactor this somehow to be able to test without saving to the database
         $chapter->pages()->createMany($pages);
     }
     private function getPageData(Chapter $chapter, string $filename, string $content): array

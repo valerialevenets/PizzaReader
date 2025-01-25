@@ -66,7 +66,7 @@ class SyncWithMangadex extends Command
     {
         foreach ($data as $item) {
             $fields = $this->convertMangadexFields($item);
-            if (strlen($fields['genres']) >=255) {
+            if (strlen($fields['genres']) >=191) {
                 continue;
             }
             $manga = $this->mangadexSaver->saveManga(
@@ -112,43 +112,26 @@ class SyncWithMangadex extends Command
     }
     private function getMangaChapters(MangadexManga $manga): array
     {
-        $limit = 50;
-        $offset = 0;
         $chapters = [];
-        do {
-            if($offset!=0) {
-                usleep(500000);
+        $response = $this->mangadexApi->getMangaAggregate($manga->mangadex_id);
+        if (! $response->ok()) {
+            throw new \Exception($response->getStatusCode().' '.$response->getReasonPhrase());
+        }
+        $chapterIds = [];
+        foreach ($response->json('volumes') as $volume) {
+            foreach ($volume['chapters'] as $chapter) {
+                $chapterIds[] = $chapter['id'];
+                $chapterIds = array_merge($chapterIds, $chapter['others']);
             }
-            $response = $this->mangadexApi->getMangaChapters($manga->mangadex_id, $limit, $offset);
+        }
+        $chapterIds = array_diff($chapterIds, $manga->chapters()->pluck('mangadex_id')->toArray());
+        foreach ($chapterIds as $chapterId) {
+            usleep(500000);
+            $response = $this->mangadexApi->getMangaChapter($chapterId);
             if (! $response->ok()) {
                 throw new \Exception($response->getStatusCode().' '.$response->getReasonPhrase());
             }
-            $chapters = array_merge($chapters, $response->json('data'));
-            $offset += $limit;
-        } while ($response->json('total') >= $offset);
-
-        if(empty($chapters)) {
-            $response = $this->mangadexApi->getMangaAggregate($manga->mangadex_id);
-            if (! $response->ok()) {
-                throw new \Exception($response->getStatusCode().' '.$response->getReasonPhrase());
-            }
-            $chapterIds = [];
-            foreach ($response->json('volumes') as $volume) {
-                foreach ($volume['chapters'] as $chapter) {
-                    $chapterIds[$chapter['id']] = $chapter['id'];
-                    foreach ($chapter['others'] as $other) {
-                        $chapterIds[$other] = $other;
-                    }
-                }
-            }
-            foreach ($chapterIds as $chapterId) {
-                usleep(500000);
-                $response = $this->mangadexApi->getMangaChapter($chapterId);
-                if (! $response->ok()) {
-                    throw new \Exception($response->getStatusCode().' '.$response->getReasonPhrase());
-                }
-                $chapters[] = $response->json('data');
-            }
+            $chapters[] = $response->json('data');
         }
         return $chapters;
     }
