@@ -15,10 +15,10 @@ class ThumbnailResize extends Command {
     const WIDTH = 400;
     protected $signature = 'thumbnail:resize';
     protected $description = 'Generate small thumbnail for all comics';
+    private int $width;
+    private int $height;
 
     function __construct(
-        private int $width,
-        private int $height,
     ) {
         $this->width = self::WIDTH;
         $this->height = self::WIDTH * self::RATIO;
