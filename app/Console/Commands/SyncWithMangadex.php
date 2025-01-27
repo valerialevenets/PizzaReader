@@ -174,9 +174,12 @@ class SyncWithMangadex extends Command
             throw new \Exception($response->getStatusCode().' '.$response->getReasonPhrase());
         }
         $files = [];
+        $iterator = 0;
         foreach ($response->json('chapter.data') as $filename) {
+            $iterator++;
             $imageResponse = $this->mangadexApi->getChapterImage($response->json('baseUrl'), $response->json('chapter.hash'), $filename);
             $filename = strip_forbidden_chars($filename);
+            $filename = $iterator.'.'.explode('.', $filename)[1];// this should work because mangadex returns ORDERED files
             $files[$filename] = $imageResponse->body();
             usleep(200000);
         }

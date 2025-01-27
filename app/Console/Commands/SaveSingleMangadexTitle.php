@@ -176,7 +176,7 @@ class SaveSingleMangadexTitle extends Command
             $iterator++;
             $imageResponse = $this->mangadexApi->getChapterImage($response->json('baseUrl'), $response->json('chapter.hash'), $filename);
             $filename = strip_forbidden_chars($filename);
-            $filename = $iterator.'.'.explode('.', $filename)[1];
+            $filename = $iterator.'.'.explode('.', $filename)[1];// this should work because mangadex returns ORDERED files
             $files[$filename] = $imageResponse->body();
             usleep(200000);
         }
