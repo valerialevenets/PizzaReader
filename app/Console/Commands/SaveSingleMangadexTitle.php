@@ -148,6 +148,7 @@ class SaveSingleMangadexTitle extends Command
             usleep(250000);
         }
         $this->progressBar->finish();
+        echo PHP_EOL;
     }
 
     private function saveSingleChapter(MangadexManga $manga, array $chapter)

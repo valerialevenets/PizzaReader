@@ -61,6 +61,7 @@ class SyncWithMangadex extends Command
         } while ($response->json('total') >= $offset);
         $this->saveMangaAndChapters($mangaList);
         $this->progressBar->finish();
+        echo PHP_EOL;
     }
     private function saveMangaAndChapters(array $data)
     {
