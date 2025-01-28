@@ -30,4 +30,8 @@ class ChapterFactory
 
         return $chapter;
     }
+    public function savePages(Chapter $chapter)
+    {
+
+    }
 }
