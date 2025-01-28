@@ -11,10 +11,17 @@ use Intervention\Image\Facades\Image;
 
 class ThumbnailResize extends Command {
 
+    const RATIO = 1.42;
+    const WIDTH = 400;
     protected $signature = 'thumbnail:resize';
     protected $description = 'Generate small thumbnail for all comics';
+    private int $width;
+    private int $height;
 
-    function __construct() {
+    function __construct(
+    ) {
+        $this->width = self::WIDTH;
+        $this->height = self::WIDTH * self::RATIO;
         parent::__construct();
     }
 
@@ -25,7 +32,7 @@ class ThumbnailResize extends Command {
             try {
                 $path = Comic::path($comic);
                 $file = Image::make(storage_path("app/$path/$comic->thumbnail"));
-                ComicController::storeSmall($file, $path, $comic->thumbnail, 250, 355);
+                ComicController::storeSmall($file, $path, $comic->thumbnail, $this->width, $this->height);
             } catch (NotReadableException $e) {
                 Log::error($e);
             }

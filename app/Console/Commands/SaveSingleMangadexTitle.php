@@ -9,7 +9,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\Console\Helper\ProgressBar;
 
-class SyncWithMangadex extends Command
+class SaveSingleMangadexTitle extends Command
 {
     private ?ProgressBar $progressBar = null;
     public function __construct(private MangadexApi $mangadexApi, private MangadexSaver $mangadexSaver)
@@ -21,64 +21,38 @@ class SyncWithMangadex extends Command
      *
      * @var string
      */
-    protected $signature = 'mangadex:sync';
+    protected $signature = 'mangadex:save {mangadexId}';
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = 'Command description';
+    protected $description = 'Saves single mangadex title';
 
     /**
      * Execute the console command.
      */
     public function handle()
     {
-        $this->saveList();
-        //echo 'Done'.PHP_EOL;
+        $mangadexId = $this->argument('mangadexId');
+        $response = $this->mangadexApi->getMangaById($mangadexId);
+        $response = json_decode(json_encode($response), true);
+        $manga = $this->mangadexSaver->saveManga(
+            $response['data']['id'],
+            $this->convertMangadexFields($response['data']),
+            $this->mangadexApi->getMangaCover($response['data']['id'], $this->getCoverArtId($response['data']['relationships']))
+        );
+        $this->saveChapters($manga);
     }
 
-    private function saveList()
+    protected function promptForMissingArgumentsUsing()
     {
-        $mangaList = [];
-        $authData = $this->mangadexApi->auth();
-        sleep(1);
-        $limit = 40;//TODO increase later
-        $offset = 0;
-        do {
-            $response = $this->mangadexApi->getList($authData['access_token'], $limit, $offset);
-            if (! $response->ok()) {
-                throw new \Exception($response->getStatusCode().' '.$response->getReasonPhrase());
-            }
-            $mangaList = array_merge($mangaList, $response->json('data'));
-            if(! $this->progressBar) {
-                $this->progressBar = $this->output->createProgressBar($response->json('total'));
-                $this->progressBar->start();
-            }
-            $offset += $limit;
-            sleep(1);
-        } while ($response->json('total') >= $offset);
-        $this->saveMangaAndChapters($mangaList);
-        $this->progressBar->finish();
-        echo PHP_EOL;
+        return [
+            'mangadexId' => 'MangadexId is required',
+        ];
     }
-    private function saveMangaAndChapters(array $data)
-    {
-        foreach ($data as $item) {
-            $fields = $this->convertMangadexFields($item);
-            if (strlen($fields['genres']) >=191) {
-                continue;
-            }
-            $manga = $this->mangadexSaver->saveManga(
-                $item['id'],
-                $fields,
-                $this->mangadexApi->getMangaCover($item['id'], $this->getCoverArtId($item['relationships']))
-            );
-            $this->saveChapters($manga);
-            $this->progressBar->advance();
-        }
-    }
+
     private function convertMangadexFields(array $item): array
     {
         $genres = [];
@@ -113,26 +87,43 @@ class SyncWithMangadex extends Command
     }
     private function getMangaChapters(MangadexManga $manga): array
     {
+        $limit = 50;
+        $offset = 0;
         $chapters = [];
-        $response = $this->mangadexApi->getMangaAggregate($manga->mangadex_id);
-        if (! $response->ok()) {
-            throw new \Exception($response->getStatusCode().' '.$response->getReasonPhrase());
-        }
-        $chapterIds = [];
-        foreach ($response->json('volumes') as $volume) {
-            foreach ($volume['chapters'] as $chapter) {
-                $chapterIds[] = $chapter['id'];
-                $chapterIds = array_merge($chapterIds, $chapter['others']);
+        do {
+            if($offset!=0) {
+                usleep(500000);
             }
-        }
-        $chapterIds = array_diff($chapterIds, $manga->chapters()->pluck('mangadex_id')->toArray());
-        foreach ($chapterIds as $chapterId) {
-            usleep(500000);
-            $response = $this->mangadexApi->getMangaChapter($chapterId);
+            $response = $this->mangadexApi->getMangaChapters($manga->mangadex_id, $limit, $offset);
             if (! $response->ok()) {
                 throw new \Exception($response->getStatusCode().' '.$response->getReasonPhrase());
             }
-            $chapters[] = $response->json('data');
+            $chapters = array_merge($chapters, $response->json('data'));
+            $offset += $limit;
+        } while ($response->json('total') >= $offset);
+
+        if(empty($chapters)) {
+            $response = $this->mangadexApi->getMangaAggregate($manga->mangadex_id);
+            if (! $response->ok()) {
+                throw new \Exception($response->getStatusCode().' '.$response->getReasonPhrase());
+            }
+            $chapterIds = [];
+            foreach ($response->json('volumes') as $volume) {
+                foreach ($volume['chapters'] as $chapter) {
+                    $chapterIds[$chapter['id']] = $chapter['id'];
+                    foreach ($chapter['others'] as $other) {
+                        $chapterIds[$other] = $other;
+                    }
+                }
+            }
+            foreach ($chapterIds as $chapterId) {
+                usleep(500000);
+                $response = $this->mangadexApi->getMangaChapter($chapterId);
+                if (! $response->ok()) {
+                    throw new \Exception($response->getStatusCode().' '.$response->getReasonPhrase());
+                }
+                $chapters[] = $response->json('data');
+            }
         }
         return $chapters;
     }
@@ -144,16 +135,22 @@ class SyncWithMangadex extends Command
                 $chapters[] = $mangaChapter;
             }
         }
+        $this->progressBar = $this->output->createProgressBar(count($chapters));
+        $this->progressBar->start();
         foreach ($chapters as $chapter) {
             try{
                 $this->saveSingleChapter($manga, $chapter);
+                $this->progressBar->advance();
             } catch (\Exception $e) {
                 Log::error($e);
                 continue;
             }
             usleep(250000);
         }
+        $this->progressBar->finish();
+        echo PHP_EOL;
     }
+
     private function saveSingleChapter(MangadexManga $manga, array $chapter)
     {
         $chapterId = $chapter['id'];

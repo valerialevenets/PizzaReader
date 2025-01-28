@@ -128,10 +128,12 @@ class Manga extends MangadexApi
      * @return Response
      * @throws ConnectionException
      */
-    public function getMangaAggregate(string $mangaId): Response
+    public function getMangaAggregate(string $mangaId, array $translatedLanguages = ['en', 'ru', 'uk', 'ukr']): Response
     {
         return Http::timeout(60)->get(
-            $this->getHostUrl().self::MANGA_ENDPOINT . '/' . $mangaId . self::AGGREGATE_ENDPOINT);
+            $this->getHostUrl().self::MANGA_ENDPOINT . '/' . $mangaId . self::AGGREGATE_ENDPOINT,
+            ['translatedLanguage' => $translatedLanguages]
+        );
     }
     public function auth()
     {
