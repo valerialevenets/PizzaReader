@@ -52,7 +52,6 @@ class SaveAnilistMangas extends Command
 
             $page++;
             sleep(2);
-            //            break;
         }
     }
 

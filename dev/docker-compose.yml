@@ -4,6 +4,8 @@ services:
     cron:
         depends_on:
             - "db"
+            - "btd"
+            - "redis"
         build:
             context: ./..
             dockerfile: dev/cron.dockerfile
@@ -16,22 +18,25 @@ services:
         image: schickling/beanstalkd
         ports:
             - "11300:1130"
-    worker:
-        depends_on:
-            - "db"
-            - "btd"
-        restart: unless-stopped
-        build:
-            context: ./..
-            dockerfile: dev/worker.dockerfile
-        volumes:
-            - ./..:/var/www/html
-            - ./data/storage:/var/www/html/storage
-            - ./data/composer:/root/.composer
+#    worker:
+#        depends_on:
+#            - "db"
+#            - "btd"
+#            - "redis"
+#        restart: unless-stopped
+#        build:
+#            context: ./..
+#            dockerfile: dev/worker.dockerfile
+#        volumes:
+#            - ./..:/var/www/html
+#            - ./data/storage:/var/www/html/storage
+#            - ./data/composer:/root/.composer
 
     backend:
         depends_on:
             - "db"
+            - "btd"
+            - "redis"
         build:
             context: ./..
             dockerfile: dev/Dockerfile
@@ -55,3 +60,11 @@ services:
             - MYSQL_PASSWORD=password
         ports:
             -   "8806:3306"
+    redis:
+        image: redis:latest
+        environment:
+            - REDIS_PASSWORD=password29
+            - REDIS_DATABASE=16
+            - REDIS_PORT=6379
+        ports:
+            - "6379:6379"
