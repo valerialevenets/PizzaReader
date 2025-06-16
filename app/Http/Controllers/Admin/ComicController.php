@@ -22,7 +22,11 @@ class ComicController extends Controller {
     }
 
     public function create() {
-        return view('admin.comics.create');
+        return view('admin.comics.createFromMangadex');
+    }
+    public function createFromMangadex()
+    {
+        return view('admin.comics.createFromMangadex');
     }
 
     public function store(Request $request) {

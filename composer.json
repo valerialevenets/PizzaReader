@@ -21,7 +21,8 @@
         "laravel/tinker": "^2.7",
         "laravel/ui": "^4.0",
         "pda/pheanstalk": "^5.0",
-        "phpspec/prophecy-phpunit": "^2.3"
+        "phpspec/prophecy-phpunit": "^2.3",
+        "predis/predis": "^2.3"
     },
     "require-dev": {
         "barryvdh/laravel-debugbar": "^3.14",

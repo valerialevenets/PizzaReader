@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Helpers\MangadexFields;
 use App\Mangadex\Api\Manga as MangadexApi;
 use App\Models\MangadexManga;
 use App\Saver\MangadexSaver;
@@ -12,8 +13,11 @@ use Symfony\Component\Console\Helper\ProgressBar;
 class SaveSingleMangadexTitle extends Command
 {
     private ?ProgressBar $progressBar = null;
-    public function __construct(private MangadexApi $mangadexApi, private MangadexSaver $mangadexSaver)
-    {
+    public function __construct(
+        private MangadexApi $mangadexApi,
+        private MangadexSaver $mangadexSaver,
+        private MangadexFields $mangadexFields
+    ) {
         return parent:: __construct();
     }
     /**
@@ -30,6 +34,12 @@ class SaveSingleMangadexTitle extends Command
      */
     protected $description = 'Saves single mangadex title';
 
+    protected function promptForMissingArgumentsUsing()
+    {
+        return [
+            'mangadexId' => 'MangadexId is required',
+        ];
+    }
     /**
      * Execute the console command.
      */
@@ -40,51 +50,13 @@ class SaveSingleMangadexTitle extends Command
         $response = json_decode(json_encode($response), true);
         $manga = $this->mangadexSaver->saveManga(
             $response['data']['id'],
-            $this->convertMangadexFields($response['data']),
+            $this->mangadexFields->convertTitleFields($response['data']),
             $this->mangadexApi->getMangaCover($response['data']['id'], $this->getCoverArtId($response['data']['relationships']))
         );
         $this->saveChapters($manga);
     }
 
-    protected function promptForMissingArgumentsUsing()
-    {
-        return [
-            'mangadexId' => 'MangadexId is required',
-        ];
-    }
 
-    private function convertMangadexFields(array $item): array
-    {
-        $genres = [];
-        foreach ($item['attributes']['tags'] as $tag) {
-            $names = $tag['attributes']['name'];
-            $name = isset($names['en']) ? $names['en'] : array_values($names)[0];
-            $genres[] = $name;
-        }
-        $title = isset($item['attributes']['title']['en'])
-            ? $item['attributes']['title']['en'] : array_values($item['attributes']['title'])[0];
-        $description = isset($item['attributes']['description']['en'])
-            ? $item['attributes']['description']['en'] : '';
-        $fields = [
-            'name' => $title,
-            'description' => $description,
-            'author' => '',
-            'genres' => implode(',', $genres),
-            'adult' => $this->isAdult($item['attributes']['contentRating']),
-            'target' => mb_ucfirst((string)$item['attributes']['publicationDemographic']),
-            'status' => mb_ucfirst((string)$item['attributes']['status']),
-        ];
-        return $fields;
-    }
-    private function convertMangadexChapterFields(array $chapter): array
-    {
-        return [
-            'volume' => $chapter['attributes']['volume'],
-            'chapter' => $chapter['attributes']['chapter'],
-            'title' => $chapter['attributes']['title'],
-            'language' => $chapter['attributes']['translatedLanguage'],
-        ];
-    }
     private function getMangaChapters(MangadexManga $manga): array
     {
         $limit = 50;
@@ -160,7 +132,7 @@ class SaveSingleMangadexTitle extends Command
         $files = $this->getChapterImages($chapterId);
         $this->mangadexSaver->saveMangadexChapter(
             $manga,
-            $this->convertMangadexChapterFields($chapter),
+            $this->mangadexFields->convertChapterFields($chapter),
             $chapterId,
             $files
         );
@@ -191,15 +163,5 @@ class SaveSingleMangadexTitle extends Command
             }
         }
         return null;
-    }
-
-    private function isAdult(string $contentRating): bool
-    {
-        $adultRatings = array_flip([
-            'erotica',
-//            'suggestive',
-            'pornographic'
-        ]);
-        return isset($adultRatings[$contentRating]);
     }
 }

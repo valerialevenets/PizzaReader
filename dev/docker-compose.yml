@@ -1,6 +1,14 @@
 version: '3.4'
 
 services:
+    redis:
+        image: redis:latest
+        environment:
+            - REDIS_PASSWORD=password29
+            - REDIS_DATABASE=16
+            - REDIS_PORT=6379
+        ports:
+            - "6379:6379"
     cron:
         depends_on:
             - "db"
@@ -33,6 +41,9 @@ services:
         depends_on:
             - "db"
         build:
+            args:
+                user: valerie
+                uid: 1000
             context: ./..
             dockerfile: dev/Dockerfile
         restart: unless-stopped

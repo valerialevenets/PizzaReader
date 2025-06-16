@@ -34,13 +34,13 @@ Route::prefix('admin')->middleware("log.request")->group(function () {
         })->name('index');
 
         // Only managers+ can create, store, edit, update, destroy and search comics
-        Route::resource('comics', ComicController::class)->except(['index', 'show'])->middleware('auth.manager');
+        Route::resource('comics', ComicController::class)->except(['index', 'show', 'createFromMangadex'])->middleware('auth.manager');
         Route::post('comics/search/{search}', [ComicController::class, 'search'])->name('search')->middleware('auth.manager');
 
         Route::name('comics.')->group(function () {
             // Only checkers+ can see list of chapter
             Route::get('comics', [ComicController::class, 'index'])->name('index')->middleware('auth.checker');
-
+            Route::get('comics/createFromMangadex', [ComicController::class, 'createFromMangadex'])->name('createFromMangadex')->middleware('auth.manager');
             Route::prefix('comics/{comic}')->group(function () {
                 // Authorized checkers+ can see a comic
                 Route::get('', [ComicController::class, 'show'])->name('show')->middleware('can.see');

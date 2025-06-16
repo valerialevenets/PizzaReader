@@ -2,7 +2,7 @@
     <ol class="breadcrumb p-3 rounded-1">
         <?php $link = "" ?>
         @for($i = 1; $i <= count(Request::segments()); $i++)
-            @if(Request::segment($i-1) === "comics" && !in_array(Request::segment($i), forbidden_words)) <?php $text = $comic->name; ?>
+            @if(Request::segment($i-1) === "comics" && !in_array(Request::segment($i), forbidden_words)) <?php $text = $comic->name;   ?>
             @elseif(Request::segment($i-1) === "chapters" && !in_array(Request::segment($i), forbidden_words)) <?php $text = \App\Models\Chapter::name($comic, $chapter); ?>
             @else <?php $text = ucwords(Request::segment($i)) ?>
             @endif

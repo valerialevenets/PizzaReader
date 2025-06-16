@@ -2,6 +2,7 @@
 @section('list-title', 'Your Comics')
 @section('list-buttons')
     <a href="{{ route('admin.comics.create') }}" class="btn btn-success ms-3">Add comic</a>
+    <a href="{{ route('admin.comics.createFromMangadex') }}" class="btn btn-success ms-3">Add from Mangadex</a>
 @endsection
 @section('list')
     <div class="list">
