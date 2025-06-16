@@ -131,6 +131,10 @@ return [
             'driver' => 'custom',
             'via' => App\Logging\AdminLogger::class,
         ],
+        'OpenObserve' => [
+            'driver' => 'custom',
+            'via' => App\Logging\OpenObserveLogger::class,
+        ],
     ],
 
 ];

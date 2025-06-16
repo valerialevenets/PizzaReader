@@ -16,18 +16,18 @@ services:
         image: schickling/beanstalkd
         ports:
             - "11300:1130"
-    worker:
-        depends_on:
-            - "db"
-            - "btd"
-        restart: unless-stopped
-        build:
-            context: ./..
-            dockerfile: dev/worker.dockerfile
-        volumes:
-            - ./..:/var/www/html
-            - ./data/storage:/var/www/html/storage
-            - ./data/composer:/root/.composer
+#    worker:
+#        depends_on:
+#            - "db"
+#            - "btd"
+#        restart: unless-stopped
+#        build:
+#            context: ./..
+#            dockerfile: dev/worker.dockerfile
+#        volumes:
+#            - ./..:/var/www/html
+#            - ./data/storage:/var/www/html/storage
+#            - ./data/composer:/root/.composer
 
     backend:
         depends_on:
