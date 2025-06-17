@@ -1,5 +1,5 @@
-0 22 * * * www-data /usr/local/bin/php /var/www/html/artisan schedule:run > /proc/1/fd/1 2>/proc/1/fd/2
-0 23 * * * www-data /usr/local/bin/php /var/www/html/artisan thumbnail:resize > /proc/1/fd/1 2>/proc/1/fd/2
-0 0 * * * www-data /usr/local/bin/php /var/www/html/artisan cache:gc > /proc/1/fd/1 2>/proc/1/fd/2
-0 2 * * * www-data /usr/local/bin/php /var/www/html/artisan mangadex:update   > /proc/1/fd/1 2>/proc/1/fd/2
+0 22 * * * su www-data -c /usr/local/bin/php /var/www/html/artisan schedule:run > /proc/1/fd/1 2>/proc/1/fd/2
+0 23 * * * su www-data -c /usr/local/bin/php /var/www/html/artisan thumbnail:resize > /proc/1/fd/1 2>/proc/1/fd/2
+0 0 * * * su www-data -c /usr/local/bin/php /var/www/html/artisan cache:gc > /proc/1/fd/1 2>/proc/1/fd/2
+0 2 * * * su www-data -c /usr/local/bin/php /var/www/html/artisan mangadex:update   > /proc/1/fd/1 2>/proc/1/fd/2
 # An empty line is required at the end of this file for a valid cron file.
