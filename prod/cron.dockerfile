@@ -14,6 +14,7 @@ RUN apt-get update \
  && pecl install imagick mcrypt \
  && docker-php-ext-enable imagick gd \
  && chmod 0600 /etc/cron.d/www-data \
+ && crontab -u www-data /etc/cron.d/www-data \
  && curl -sS https://getcomposer.org/installer \
            | php -- --install-dir=/usr/local/bin --filename=composer --version=2.1.6 \
      && composer self-update
