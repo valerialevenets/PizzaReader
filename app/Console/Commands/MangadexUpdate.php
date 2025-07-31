@@ -9,6 +9,7 @@ use App\Saver\MangadexSaver;
 use App\Service\ComicUpdater;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
+use GuzzleHttp\Exception\ClientException;
 
 class MangadexUpdate extends Command
 {
@@ -29,8 +30,13 @@ class MangadexUpdate extends Command
         $this->output->progressStart(count($mangas));
 
         foreach ($mangas as $manga) {
-            $this->updateComic($manga);
-            $this->saveChapters($manga);
+            try {
+                $this->updateComic($manga);
+                $this->saveChapters($manga);
+            } catch (ClientException $e) {
+                Log::error($e);
+                continue;
+            }
             $this->output->progressAdvance();
         }
         $this->output->progressFinish();
