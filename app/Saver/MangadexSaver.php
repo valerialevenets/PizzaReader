@@ -93,7 +93,7 @@ class MangadexSaver
     {
         $fields = array_intersect_key(
             $fields,
-            array_flip(['adult', 'target', 'status'])
+            array_flip(['adult', 'target', 'status', 'author', 'alt_titles', 'genres'])
         );
         $comic->update($fields);
     }
