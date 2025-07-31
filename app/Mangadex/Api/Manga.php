@@ -63,7 +63,9 @@ class Manga extends MangadexApi
         $pathParam = $withRelationship ? $id . self::RELATION_ENDPOINT : $id;
 
         $query = !empty($queryParams) ? $this->buildQueryParams($queryParams) : [];
-
+        $query['includes'] = [
+            'manga', 'cover_art', 'author', 'artist', 'tag', 'creator'
+        ];
         $response = $this->client->request('GET', self::MANGA_ENDPOINT . '/' . $pathParam, [
             'query' => $query,
         ]);

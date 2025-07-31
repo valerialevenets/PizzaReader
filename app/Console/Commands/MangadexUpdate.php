@@ -3,15 +3,21 @@
 namespace App\Console\Commands;
 
 use App\Mangadex\Api\Manga as MangadexApi;
+use App\Mangadex\FieldMapper;
 use App\Models\MangadexManga;
 use App\Saver\MangadexSaver;
+use App\Service\ComicUpdater;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
 class MangadexUpdate extends Command
 {
-    public function __construct(private MangadexApi $mangadexApi, private MangadexSaver $mangadexSaver)
-    {
+    public function __construct(
+        private MangadexApi $mangadexApi,
+        private MangadexSaver $mangadexSaver,
+        private FieldMapper $fieldMapper,
+        private ComicUpdater $comicUpdater,
+    ) {
         return parent:: __construct();
     }
     protected $signature = 'mangadex:update';
@@ -23,10 +29,19 @@ class MangadexUpdate extends Command
         $this->output->progressStart(count($mangas));
 
         foreach ($mangas as $manga) {
+            $this->updateComic($manga);
             $this->saveChapters($manga);
             $this->output->progressAdvance();
         }
         $this->output->progressFinish();
+    }
+    private function updateComic(MangadexManga $manga)
+    {
+        $response = $this->mangadexApi->getMangaById($manga->mangadex_id);
+        $response = json_decode(json_encode($response), true);
+        $fields = $this->fieldMapper->map($response['data']);
+
+        $this->comicUpdater->updateComic($manga->comic, $fields);
     }
 
     private function saveChapters(MangadexManga $manga)
