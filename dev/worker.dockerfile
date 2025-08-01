@@ -1,5 +1,10 @@
 FROM php:8.2
 
+ARG user
+ARG uid
+
+RUN useradd -G www-data,root -u $uid -d /home/$user $user
+
 COPY dev/php.ini-production /usr/local/etc/php/php.ini-production
 COPY dev/php.ini-development /usr/local/etc/php/php.ini-development
 COPY dev/php.ini /usr/local/etc/php/php.ini
@@ -11,6 +16,8 @@ RUN apt-get update \
  && docker-php-ext-install -j$(nproc) zip pdo pdo_mysql mbstring iconv calendar intl sockets gd \
  && pecl install imagick mcrypt \
  && docker-php-ext-enable imagick gd
+
+USER $user
 
 WORKDIR /var/www/html
 
