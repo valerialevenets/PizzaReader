@@ -1,5 +1,10 @@
 FROM php:8.2-apache
 
+ARG user
+ARG uid
+
+RUN useradd -G www-data,root -u $uid -d /home/$user $user
+
 COPY dev/php.ini-production /usr/local/etc/php/php.ini-production
 COPY dev/php.ini-development /usr/local/etc/php/php.ini-development
 COPY dev/php.ini /usr/local/etc/php/php.ini
@@ -17,5 +22,7 @@ RUN apt-get update \
           | php -- --install-dir=/usr/local/bin --filename=composer --version=2.1.6 \
     && composer self-update \
     && chown -R www-data:www-data /var/www/html
+
+USER $user
 
 WORKDIR /var/www/html

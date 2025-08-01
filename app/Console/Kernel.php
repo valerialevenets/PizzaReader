@@ -17,6 +17,8 @@ class Kernel extends ConsoleKernel
         Commands\ViewsClear::class,
         Commands\PagesCheck::class,
         Commands\CacheGC::class,
+        Commands\TelegramGetMessages::class,
+        Commands\MangadexUpdate::class
     ];
 
     /**
@@ -26,6 +28,8 @@ class Kernel extends ConsoleKernel
     {
         $schedule->command('views:clear --days='.config('app.cron_views_clear_days'))->daily();
         $schedule->command('cache:gc')->hourly();
+        $schedule->command('telegram:get')->everyThirtySeconds();
+        $schedule->command('mangadex:queue-update')->daily();
     }
 
     /**

@@ -20,6 +20,9 @@ services:
             - "btd"
         restart: unless-stopped
         build:
+            args:
+                user: "www-data"
+                uid: 33
             context: ./..
             dockerfile: prod/worker.dockerfile
         volumes:
