@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
+use Psr\Log\LoggerInterface;
 
 class MangadexQueueUpdate extends Command
 {
@@ -23,8 +24,9 @@ class MangadexQueueUpdate extends Command
     /**
      * Execute the console command.
      */
-    public function handle()
+    public function handle(LoggerInterface $logger)
     {
+        $logger->info("Mangadex: Queueing update");
         \App\Jobs\MangadexUpdate::dispatch();
     }
 }
