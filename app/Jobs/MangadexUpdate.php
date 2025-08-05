@@ -11,6 +11,7 @@ use GuzzleHttp\Exception\ClientException;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
+use Psr\Log\LoggerInterface;
 
 class MangadexUpdate implements ShouldQueue
 {
@@ -20,6 +21,7 @@ class MangadexUpdate implements ShouldQueue
     private MangadexSaver $mangadexSaver;
     private FieldMapper $fieldMapper;
     private ComicUpdater $comicUpdater;
+    private LoggerInterface $logger;
 
     /**
      * Execute the job.
@@ -29,12 +31,17 @@ class MangadexUpdate implements ShouldQueue
         MangadexSaver $mangadexSaver,
         FieldMapper $fieldMapper,
         ComicUpdater $comicUpdater,
+        LoggerInterface $logger
     ): void
     {
         $this->mangadexApi = $mangadexApi;
         $this->mangadexSaver = $mangadexSaver;
         $this->fieldMapper = $fieldMapper;
         $this->comicUpdater = $comicUpdater;
+        $this->logger = $logger;
+        $logger->info("Mangadex: Executing queued update");
+
+        $this->actualHandle();
     }
 
     private function actualHandle(): void
